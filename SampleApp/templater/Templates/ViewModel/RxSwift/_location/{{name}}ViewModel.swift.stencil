@@ -1,0 +1,20 @@
+//
+//  {{fileName}}
+//  {{projectName}}
+//
+//  Created by {{author}} on {{date}}.
+//  {{copyright}}
+//
+
+import RxCocoa
+import RxSwift
+
+class {{name|capitalized}}ViewModel: ViewModelType {
+    struct Input {}
+
+    struct Output {}
+
+    func transform(input _: {{name|capitalized}}ViewModel.Input) -> {{name|capitalized}}ViewModel.Output {
+        return Output()
+    }
+}

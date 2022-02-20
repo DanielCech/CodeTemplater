@@ -1,0 +1,12 @@
+//
+//  {{fileName}}
+//  {{projectName}}
+//
+//  Created by {{author}} on {{date}}.
+//  {{copyright}}
+//
+
+import Foundation
+
+// TODO: Fix grammar
+protocol {{name|capitalized}}Coordinator: NavigationControllerCoordinator {}

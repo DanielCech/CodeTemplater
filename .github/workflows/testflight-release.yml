@@ -1,0 +1,83 @@
+### Secrets ###
+#
+# MATCH_GIT_BASIC_AUTHORIZATION
+# DELIVER_PASSWORD
+# KEYCHAIN_PASSWORD
+# MATCH_PASSWORD
+# SLACK_URL
+#
+
+name: Testflight Release
+
+on:
+  push:
+    branches:
+      - staging
+      - production
+
+jobs:
+  testflight_release:
+    name: Testflight Release
+    runs-on: self-hosted
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+        with:
+          fetch-depth: 0
+      - name: Extract branch name
+        id: branch
+        shell: bash
+        run: echo "##[set-output name=branch_name;]$(echo ${GITHUB_REF#refs/heads/})"
+      - name: Cleanup and setup
+        run: |
+            rm -rf tmp
+            mkdir tmp
+            fastlane setup_github_actions output_path:"./tmp/" --env ${{ steps.branch.outputs.branch_name }}
+        env:
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          DELIVER_PASSWORD: ${{ secrets.DELIVER_PASSWORD }}
+          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION}}
+      - name: CocoaPods cache
+        uses: actions/cache@v1
+        id: cocoapods_cache
+        with:
+          path: Pods
+          key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pods-
+      - name: CocoaPods
+        run: pod install
+      - name: Increment build number
+        id: get_version_number
+        run: |
+            version=$(fastlane set_first_unused_build_number --env ${{ steps.branch.outputs.branch_name }} | sed -E "s/[[:cntrl:]]\[[0-9]{1,3}m//g" | grep -Eo "[0-9]+(\.[0-9]+)+(\.[0-9]+)+$" | tail -n 1)
+            build_number=$(agvtool what-version -terse)
+            echo "::set-output name=version::$version"
+            echo "::set-output name=build_number::$build_number"
+        env:
+          DELIVER_PASSWORD: ${{ secrets.DELIVER_PASSWORD }}
+      - name: Build
+        run: fastlane build_and_deploy --env ${{ steps.branch.outputs.branch_name }}
+        env:
+          DELIVER_PASSWORD: ${{ secrets.DELIVER_PASSWORD }}
+      - name: Send Slack message
+        run: fastlane send_slack_message success:true message:"Version $version ($build_number) was uploaded to TestFlight."
+        env:
+          SLACK_URL: ${{ secrets.SLACK_URL }}
+          version: ${{ steps.get_version_number.outputs.version }}
+          build_number: ${{ steps.get_version_number.outputs.build_number }}
+      - name: Notify slack in case of failure
+        if: failure() || cancelled()
+        run: fastlane send_slack_message success:false message:"Building TestFlight version $version ($build_number) failed."
+        env:
+          SLACK_URL: ${{ secrets.SLACK_URL }}
+          version: ${{ steps.get_version_number.outputs.version }}
+          build_number: ${{ steps.get_version_number.outputs.build_number }}
+      - name: Cleanup
+        if: always()
+        run: |
+            fastlane dispose_github_actions --env ${{ steps.branch.outputs.branch_name }}
+            rm -rf ./tmp

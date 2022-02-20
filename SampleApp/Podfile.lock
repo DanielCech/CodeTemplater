@@ -1,0 +1,16 @@
+PODS:
+  - codeTemplater (0.1.0)
+
+DEPENDENCIES:
+  - codeTemplater (from `../`)
+
+EXTERNAL SOURCES:
+  codeTemplater:
+    :path: "../"
+
+SPEC CHECKSUMS:
+  codeTemplater: c515056868d442c7d8edf85f741b657251275b38
+
+PODFILE CHECKSUM: 7676a258f0ff136d7ab48e2985e0accc59812466
+
+COCOAPODS: 1.9.3

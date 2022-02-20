@@ -1,0 +1,49 @@
+//
+//  {{fileName}}
+//  {{projectName}}
+//
+//  Created by {{author}} on {{date}}.
+//  {{copyright}}
+//
+
+import RxCocoa
+import RxSwift
+import UIKit
+
+class {{name|capitalized}}ViewController: {{superClass}}, ViewModelContaining {
+    // MARK: IBOutlets
+
+    // MARK: Public Properties
+
+    // swiftlint:disable:next implicitly_unwrapped_optional
+    weak var coordinator: {{coordinator}}Coordinating!
+
+    // swiftlint:disable:next implicitly_unwrapped_optional
+    var viewModel: {{name|capitalized}}ViewModel!
+    var disposeBag: DisposeBag = DisposeBag()
+
+    // MARK: Private Properties
+
+    // MARK: Lifecycle
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        setupView()
+    }
+
+    func bindToViewModel() {
+        let input = {{name|capitalized}}ViewModel.Input()
+        let output = viewModel.transform(input: input)
+
+        /// Add bindings to output properties here
+    }
+}
+
+// MARK: Private Methods
+
+private extension {{name|capitalized}}ViewController {
+    func setupView() {
+        bindToViewModel()
+    }
+}

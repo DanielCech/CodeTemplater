@@ -1,0 +1,48 @@
+//
+//  {{fileName}}
+//  {{projectName}}
+//
+//  Created by {{author}} on {{date}}.
+//  {{copyright}}
+//
+
+import Swinject
+import UIKit
+
+final class {{name|capitalized}}Coordinator {
+    var childCoordinators = [Coordinator]()
+    let assembler: Assembler
+
+    let navigationController: UINavigationController
+
+    init(navigationController: UINavigationController, assembler: Assembler) {
+        self.navigationController = navigationController
+        self.assembler = assembler
+    }
+}
+
+// MARK: - {{name|capitalized}}Coordinating
+
+extension {{name|capitalized}}Coordinator: {{name|capitalized}}Coordinating {
+    func start() {
+        navigationController.pushViewController(
+            makeRootViewController(),
+            animated: false
+        )
+    }
+}
+
+// MARK: - Factories
+
+// Extension is internal to be accessible from test target
+internal extension {{name|capitalized}}Coordinator {
+    func makeRootViewController() -> UIViewController {
+        // DO NOT FORGET TO ADD VIEW MODEL TO `ViewModelAssembly.swift`
+//        let viewController = R.storyboard.specificViewController.instantiateInitialViewController(
+//            viewModel: resolve(SpecificViewModeling.self)
+//        )
+//        viewController.coordinator = self
+
+        return UIViewController()
+    }
+}

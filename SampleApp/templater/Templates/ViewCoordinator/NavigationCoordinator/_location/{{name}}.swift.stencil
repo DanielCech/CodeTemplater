@@ -1,0 +1,11 @@
+//
+//  {{fileName}}
+//  {{projectName}}
+//
+//  Created by {{author}} on {{date}}.
+//  {{copyright}}
+//
+
+import UIKit
+
+class {{name|capitalized}}Coordinator: {{SuperClass}} {}

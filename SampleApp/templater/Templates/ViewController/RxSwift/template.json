@@ -1,0 +1,22 @@
+{
+  "parameters": [
+    {
+      "name": "name",
+      "type": "string",
+      "description": "A name of generated item (capitalized and without suffix -ViewController, etc)."
+    },
+    {
+      "name": "superClass",
+      "type": "string",
+      "defaultValue": "UIViewController",
+      "description": "A superclass of generated view controller"
+    },
+    {
+      "name": "coordinator",
+      "type": "string",
+      "description": "A name of view coordinator without 'Coordinator' suffix"
+    }
+  ],
+  "validationContext": {},
+  "dependencies": ["ViewModel:RxSwift"]
+}
