@@ -7,13 +7,11 @@
 
 import Foundation
 
-
 struct ProcessedPaths {
     var templatePath: String
     var middlePath: String
     var projectPath: String
 }
-
 
 /// The simple struct that collects related template file, generated file and project file
 struct ProcessedFile {
@@ -21,7 +19,6 @@ struct ProcessedFile {
     var middleFile: String
     var projectFile: String?
 }
-
 
 /// Review mode after code generation
 public enum ReviewMode: String {
@@ -67,6 +64,7 @@ public enum ProgramMode: String {
 
 public enum LocationType: String {
     case project = "_project"
+    case tests = "_tests"
     case sources = "_sources"
     case location = "_location"
 }

@@ -11,7 +11,7 @@ import Foundation
 
 extension Context {
     // MARK: - Subscripts
-    
+
     /// Obtaining optional bool value by key by subscript
     subscript(parameter: DefaultBoolParameter) -> Bool? {
         get {

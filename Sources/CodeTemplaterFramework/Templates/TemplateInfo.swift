@@ -8,17 +8,14 @@
 import Foundation
 
 struct TemplateInfo {
-    /// Category of template - the first level of folder structure
-    var category: String
-
+    /// Description of template - the meaning and usage
+    var description: String
+    
+    /// The status of template in terms of validation - possible values are "draft", "failing", "passing"
+    var status: String
+    
     /// List of templates that are dependencies for current template (e.g. some view controller is not compilable without his view model)
     var dependencies: [String]
-
-    /// Subjective measure - how well is template prepared?
-    var completeness: Int
-
-    /// Is template separately compilable and validatable?
-    var compilable: Bool
 
     /// Context for template validation - for validation purposes
     var validationContext: Context

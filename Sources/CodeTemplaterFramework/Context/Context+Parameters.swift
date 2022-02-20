@@ -7,8 +7,7 @@
 
 import Foundation
 
-extension Context {
-    
+public extension Context {
     private func saveParameter(parameterName: String, value: ParameterValue) {
         switch value {
         case .none:
@@ -21,25 +20,25 @@ extension Context {
             dictionary[parameterName] = value
         }
     }
-    
+
     /// Universal method for asking for missing parameter
     private func askForParameter(parameterName: String, type: ParameterType) -> ParameterValue {
         guard let parameter = parameterProcessor.getParameter(name: parameterName) else {
             fatalError("Unknown parameter: \(parameterName)")
         }
-        
+
         guard parameter.type == type else {
             fatalError("Parameter type mismatch: \(parameterName):\(parameter.type) vs \(type)")
         }
-        
+
         let defaultValueAvailable = (parameter.defaultValue != .none)
-        
+
         // Select default value immediately
-        if defaultValueAvailable && !parameter.alwaysAsk {
+        if defaultValueAvailable, !parameter.alwaysAsk {
             saveParameter(parameterName: parameterName, value: parameter.defaultValue)
             return parameter.defaultValue
         }
-        
+
         var hint: String
         switch type {
         case .bool:
@@ -47,16 +46,16 @@ extension Context {
         case .string:
             hint = ""
         case .stringArray:
-            hint = "[comma-separated]"
+            hint = "[space separated list] or [] for empty list"
         }
-        
+
         if defaultValueAvailable {
             if !hint.isEmpty {
                 hint += " "
             }
             hint += "(keep empty for default value)"
         }
-        
+
         return questionIteration(
             parameterName: parameterName,
             parameter: parameter,
@@ -65,8 +64,8 @@ extension Context {
             type: type
         )
     }
-    
-    func questionIteration(
+
+    internal func questionIteration(
         parameterName: String,
         parameter: Parameter,
         hint: String,
@@ -74,25 +73,27 @@ extension Context {
         type: ParameterType
     ) -> ParameterValue {
         var showHeader = true
-        
+
         while true {
             if showHeader {
-                print("🧩 Missing parameter '\(parameterName)': \(parameter.description).")
+                Logger.log(indent: 0, string: "🧩 Missing parameter '\(parameterName)': \(parameter.description).")
                 if parameter.possibleValues != nil {
-                    print("🧩 The list of possible values is available (type '?')")
+                    Logger.log(indent: 1, string: "🧩 The list of possible values is available (type '?')")
                 }
             }
-            
+
             if defaultValueAvailable {
-                print("📌  Default value: '\(parameter.defaultValue.description)'.")
-                print("❔ Enter '\(parameterName)' value \(hint): ", terminator: "")
+                Logger.log(indent: 1, string: "📌  Default value: '\(parameter.defaultValue.description)'.")
+            }
+
+            if hint.isEmpty {
+                Logger.log(indent: 1, string: "❔ Enter '\(parameterName)': ", terminator: "")
             }
             else {
-                print("❔ Enter '\(parameterName)': ", terminator: "")
+                Logger.log(indent: 1, string: "❔ Enter '\(parameterName)' value \(hint): ", terminator: "")
             }
-            
-            
-            if let input = readLine() {
+
+            if let input = readLine()?.trimmingCharacters(in: .whitespaces) {
                 if input == "?" {
                     if let possibleValues = parameter.possibleValues {
                         if let selectedValue = selectFrom(
@@ -106,19 +107,19 @@ extension Context {
                         }
                     }
                     else {
-                        print("❗️ List of possible values is not available\n")
+                        Logger.log(indent: 1, string: "❗️ List of possible values is not available\n")
                         showHeader = true
                         continue
                     }
                 }
-                
+
                 if !input.isEmpty {
                     switch type {
                     case .bool:
                         if input == "t" || input == "f" {
                             let trueOrFalse = (input == "t") ? true : false
                             dictionary[parameterName] = trueOrFalse
-                            print("")
+                            Logger.log(indent: 0, string: "")
                             return .bool(trueOrFalse)
                         }
                     case .string:
@@ -127,7 +128,7 @@ extension Context {
                             let possibleValueStrings = parameterValuesList(possibleValues: possibleValues)
                             if possibleValueStrings.contains(input) {
                                 dictionary[parameterName] = input
-                                print("")
+                                Logger.log(indent: 0, string: "")
                                 return .string(input)
                             }
                             else {
@@ -138,7 +139,7 @@ extension Context {
                                     input: input
                                 ) {
                                     dictionary[parameterName] = selectedValue
-                                    print("")
+                                    Logger.log(indent: 0, string: "")
                                     return .string(selectedValue)
                                 }
                                 else {
@@ -149,32 +150,39 @@ extension Context {
                         }
                         else {
                             dictionary[parameterName] = input
-                            print("")
+                            Logger.log(indent: 0, string: "")
                             return .string(input)
                         }
-                        
+
                     case .stringArray:
-                        let list = input.split(separator: ",").map { String($0) }
+                        let list: [String]
+                        if input == "[]" {
+                            list = []
+                        }
+                        else {
+                            list = input.splittedBySpaces()
+                        }
+                        
                         dictionary[parameterName] = list
-                        print("")
+                        Logger.log(indent: 0, string: "")
                         return .stringArray(list)
                     }
                 }
                 else {
                     if defaultValueAvailable {
                         saveParameter(parameterName: parameterName, value: parameter.defaultValue)
-                        print("")
+                        Logger.log(indent: 0, string: "")
                         return parameter.defaultValue
                     }
                 }
             }
-            
+
             showHeader = true
-            print("❗️ Incorrect input\n")
+            Logger.log(indent: 1, string: "❗️ Incorrect input\n")
         }
     }
-    
-    func parameterValuesList(possibleValues: [ParameterValue]) -> [String] {
+
+    internal func parameterValuesList(possibleValues: [ParameterValue]) -> [String] {
         let array = possibleValues.compactMap { parameterValue -> String? in
             if case let .string(stringValue) = parameterValue {
                 return stringValue
@@ -183,14 +191,14 @@ extension Context {
                 return nil
             }
         }
-        
+
         return array
     }
-    
-    func selectFrom(possibleValues: [ParameterValue], parameterName: String, parameter: Parameter, input: String) -> String? {
+
+    internal func selectFrom(possibleValues: [ParameterValue], parameterName _: String, parameter _: Parameter, input: String) -> String? {
         let possibleValueStrings = parameterValuesList(possibleValues: possibleValues)
         let sortedValueStrings = possibleValueStrings.sorted()
-        
+
         let filteredValueStrings: [String]
         if input.isEmpty {
             filteredValueStrings = sortedValueStrings
@@ -198,52 +206,52 @@ extension Context {
         else {
             filteredValueStrings = sortedValueStrings.filter { $0.lowercased().contains(input.lowercased()) }
         }
-        
+
         if filteredValueStrings.isEmpty {
-            print("❗️ Invalid value")
+            Logger.log(indent: 1, string: "❗️ Invalid value")
             return nil
         }
-        
+
         for (index, item) in filteredValueStrings.enumerated() {
-            print("    #\(index): \(item)")
+            Logger.log(indent: 1, string: "#\(index): \(item)")
         }
-        
-        print("❔ Enter index (or `X` for interruption): ", terminator: "")
+
+        Logger.log(indent: 1, string: "#️⃣ Enter index (or `X` for interruption): ", terminator: "")
         if let input = readLine() {
-            if input == "X" {
+            if input.lowercased() == "x" {
                 return nil
             }
             else {
                 if let choiceIndex = Int(input) {
-                    if (choiceIndex >= 0) && (choiceIndex < filteredValueStrings.count) {
+                    if choiceIndex >= 0, choiceIndex < filteredValueStrings.count {
+                        Logger.log(indent: 0, string: "")
                         return filteredValueStrings[choiceIndex]
                     }
                     else {
-                        print("❗️ Index outside of bounds")
+                        Logger.log(indent: 1, string: "❗️ Index outside of bounds")
                         return nil
                     }
                 }
                 else {
-                    print("❗️ Incorrect input")
+                    Logger.log(indent: 1, string: "❗️ Incorrect input")
                     return nil
                 }
             }
-            
         }
         else {
             return nil
         }
     }
-    
+
     // MARK: - Bool parameters
-    
+
     /// Obtaining a bool value for default bool parameter ; if value is not present it will ask the user
-    public func boolValue(_ parameter: DefaultBoolParameter) -> Bool {
+    func boolValue(_ parameter: DefaultBoolParameter) -> Bool {
         return boolValue(parameter.rawValue)
     }
-    
+
     /// Obtaining a bool value for parameter with name parameterName ; if value is not present it will ask the user
-    @discardableResult public func boolValue(_ parameterName: String) -> Bool {
+    @discardableResult func boolValue(_ parameterName: String) -> Bool {
         if let boolValue = dictionary[parameterName] as? Bool {
             return boolValue
         }
@@ -252,28 +260,28 @@ extension Context {
     }
 
     /// Obtaining optional bool value by key from context; if value is not present it will return nil
-    public func optionalBoolValue(_ parameter: DefaultBoolParameter) -> Bool? {
+    func optionalBoolValue(_ parameter: DefaultBoolParameter) -> Bool? {
         return optionalBoolValue(parameter.rawValue)
     }
-    
+
     /// Obtaining optional bool value by key from context; if value is not present it will return nil
-    public func optionalBoolValue(_ parameterName: String) -> Bool? {
+    func optionalBoolValue(_ parameterName: String) -> Bool? {
         if let boolValue = dictionary[parameterName] as? Bool {
             return boolValue
         }
 
         return nil
     }
-    
+
     // MARK: - String parameters
 
     /// Obtaining a string value by key from context; if value is not present it will ask the user
-    public func stringValue(_ parameter: DefaultStringParameter) -> String {
+    func stringValue(_ parameter: DefaultStringParameter) -> String {
         return stringValue(parameter.rawValue)
     }
-    
+
     /// Obtaining a string value for parameter with name parameterName ; if value is not present it will ask the user
-    @discardableResult public func stringValue(_ parameterName: String) -> String {
+    @discardableResult func stringValue(_ parameterName: String) -> String {
         if let stringValue = dictionary[parameterName] as? String {
             return stringValue
         }
@@ -282,27 +290,27 @@ extension Context {
     }
 
     /// Obtaining optional string value by key from context; if value is not present it will return nil
-    public func optionalStringValue(_ parameter: DefaultStringParameter) -> String? {
+    func optionalStringValue(_ parameter: DefaultStringParameter) -> String? {
         return optionalStringValue(parameter.rawValue)
     }
-    
+
     /// Obtaining optional string value by key from context; if value is not present it will return nil
-    public func optionalStringValue(_ parameterName: String) -> String? {
+    func optionalStringValue(_ parameterName: String) -> String? {
         if let stringValue = dictionary[parameterName] as? String {
             return stringValue
         }
         return nil
     }
-    
+
     // MARK: - String array parameters
 
     /// Obtaining string array value by key for default parameter; if value is not present it will ask the user
-    public func stringArrayValue(_ parameter: DefaultStringArrayParameter) -> [String] {
+    func stringArrayValue(_ parameter: DefaultStringArrayParameter) -> [String] {
         return stringArrayValue(parameter.rawValue)
     }
-    
+
     /// Obtaining string array value by parameter name; if value is not present it will ask the user
-    @discardableResult public func stringArrayValue(_ parameterName: String) -> [String] {
+    @discardableResult func stringArrayValue(_ parameterName: String) -> [String] {
         if let stringArrayValue = dictionary[parameterName] as? [String] {
             return stringArrayValue
         }
@@ -311,15 +319,28 @@ extension Context {
     }
 
     /// Obtaining optional string array value for default parameter; if value is not present it will return nil
-    public func optionalStringArrayValue(_ parameter: DefaultStringArrayParameter) -> [String]? {
+    func optionalStringArrayValue(_ parameter: DefaultStringArrayParameter) -> [String]? {
         return optionalStringArrayValue(parameter.rawValue)
     }
-    
+
     /// Obtaining optional string array value by parameter name; if value is not present it will return nil
-    public func optionalStringArrayValue(_ parameterName: String) -> [String]? {
+    func optionalStringArrayValue(_ parameterName: String) -> [String]? {
         if let stringArrayValue = dictionary[parameterName] as? [String] {
             return stringArrayValue
         }
         return nil
+    }
+}
+
+extension Context {
+    func boolParameterNames() -> [String] {
+        var boolParameters = [String]()
+        for parameterName in dictionary.keys {
+            if optionalBoolValue(parameterName) != nil {
+                boolParameters.append(parameterName)
+            }
+        }
+        
+        return boolParameters
     }
 }

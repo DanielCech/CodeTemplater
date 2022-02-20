@@ -14,10 +14,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "codeTemplater::codeTemplater"
-               BuildableName = "codeTemplater"
-               BlueprintName = "codeTemplater"
-               ReferencedContainer = "container:codeTemplater.xcodeproj">
+               BlueprintIdentifier = "codetemplater::codetemplater"
+               BuildableName = "codetemplater"
+               BlueprintName = "codetemplater"
+               ReferencedContainer = "container:codetemplater.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -32,10 +32,10 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "codeTemplater::codeTemplaterTests"
+               BlueprintIdentifier = "codetemplater::codeTemplaterTests"
                BuildableName = "codeTemplaterTests.xctest"
                BlueprintName = "codeTemplaterTests"
-               ReferencedContainer = "container:codeTemplater.xcodeproj">
+               ReferencedContainer = "container:codetemplater.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -45,8 +45,7 @@
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
-      useCustomWorkingDirectory = "YES"
-      customWorkingDirectory = "/Users/dan/Documents/Development/Projects/[CodeTemplater]/ios-code-templates/SampleApp"
+      useCustomWorkingDirectory = "NO"
       ignoresPersistentStateOnLaunch = "NO"
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
@@ -55,18 +54,12 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "codeTemplater::codeTemplater"
-            BuildableName = "codeTemplater"
-            BlueprintName = "codeTemplater"
-            ReferencedContainer = "container:codeTemplater.xcodeproj">
+            BlueprintIdentifier = "codetemplater::codetemplater"
+            BuildableName = "codetemplater"
+            BlueprintName = "codetemplater"
+            ReferencedContainer = "container:codetemplater.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
-      <CommandLineArguments>
-         <CommandLineArgument
-            argument = "--help"
-            isEnabled = "NO">
-         </CommandLineArgument>
-      </CommandLineArguments>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"

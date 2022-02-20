@@ -6,9 +6,10 @@
 //
 
 import Foundation
+import ScriptToolkit
 
 /// Context structure type
-public class Context {
+final public class Context {
     var dictionary: [String: Any]
 
     public init() {
@@ -32,5 +33,13 @@ extension Context {
     func debugDescription() -> String {
         let contextDescription = dumpString(self)
         return "context: \(contextDescription)"
+    }
+}
+
+// MARK: - Debug print
+
+extension Context {
+    var inPlace: Bool {
+        self[.inPlace] ?? false
     }
 }

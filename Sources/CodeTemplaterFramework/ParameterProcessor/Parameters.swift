@@ -24,20 +24,20 @@ enum ParameterValue: Codable {
     }
 
     func encode(to _: Encoder) throws {}
-    
+
     var description: String {
         switch self {
         case .none:
             return "<none>"
         case let .bool(value):
-            return value ? "true" :  "false"
+            return value ? "true" : "false"
         case let .string(value):
             return value
         case let .stringArray(value):
             return value.joined(separator: ",")
         }
     }
-    
+
     func boolValue() -> Bool {
         if case let .bool(value) = self {
             return value
@@ -46,7 +46,7 @@ enum ParameterValue: Codable {
             fatalError("Type mismatch")
         }
     }
-    
+
     func stringValue() -> String {
         if case let .string(value) = self {
             return value
@@ -55,7 +55,7 @@ enum ParameterValue: Codable {
             fatalError("Type mismatch")
         }
     }
-    
+
     func stringArrayValue() -> [String] {
         if case let .stringArray(value) = self {
             return value
@@ -64,7 +64,7 @@ enum ParameterValue: Codable {
             fatalError("Type mismatch")
         }
     }
-    
+
     init(bool: Bool?) {
         if let unwrappedBool = bool {
             self = .bool(unwrappedBool)
@@ -73,7 +73,7 @@ enum ParameterValue: Codable {
             self = .none
         }
     }
-    
+
     init(string: String?) {
         if let unwrappedString = string {
             self = .string(unwrappedString)
@@ -82,7 +82,7 @@ enum ParameterValue: Codable {
             self = .none
         }
     }
-    
+
     init(stringArray: [String]?) {
         if let unwrappedStringArray = stringArray {
             self = .stringArray(unwrappedStringArray)
@@ -95,27 +95,29 @@ enum ParameterValue: Codable {
 
 extension ParameterValue: Equatable {}
 
-
 public enum DefaultBoolParameter: String, CaseIterable {
-    case none                       // Dummy value is needed to make type compilable
+    case inPlace
+    case noSkip
 }
 
 public enum DefaultStringParameter: String, CaseIterable {
     // Script setup
     case mode
     case reviewMode
-        
+
     // Template parameters
     case template
-    case templateCombo
-    case category
+    case templateScript
     case context
     case name
     case projectName
     case targetName
     case author
     case copyright
-        
+    case description
+    case derivedFrom
+    case status
+
     // Auto-generated parameters
     case fileName
     case date
@@ -124,44 +126,45 @@ public enum DefaultStringParameter: String, CaseIterable {
     case scriptPath
     case locationPath
     case projectPath
+    case testsPath
     case sourcesPath
     case templatePath
+    case templateScriptPath
     case generatePath
     case validatePath
     case preparePath
-      
+
     // Template preparation
     case deriveFromTemplate
 }
 
-public  enum DefaultStringArrayParameter: String, CaseIterable {
+public enum DefaultStringArrayParameter: String, CaseIterable {
     case projectFiles
 }
-
 
 /// Abstract parameter class - I couldn't use protocol here because parameters is polymorphic array
 class Parameter {
     /// The name of parameter
     var name: String
-    
+
     /// Parameter type - bool, string, stringArray
     var type: ParameterType
-    
+
     /// Description of parameter meaning
     var description: String
-    
+
     /// Default value of parameter
     var defaultValue: ParameterValue
-    
+
     /// Optional list of possible values
     var possibleValues: [ParameterValue]?
-    
+
     /// Is it mandatory to have this parameter filled?
     var mandatory: Bool
-    
+
     /// Should be user always asked for the value even if defaultValue is present
     var alwaysAsk: Bool
-    
+
     init(
         name: String,
         type: ParameterType,
@@ -181,7 +184,7 @@ class Parameter {
     }
 }
 
-class BoolParameter: Parameter {
+final class BoolParameter: Parameter {
     init(
         name: String,
         description: String,
@@ -198,16 +201,16 @@ class BoolParameter: Parameter {
             alwaysAsk: alwaysAsk
         )
     }
-    
+
     init(_ dict: [String: Any]) throws {
         guard let name = dict["name"] as? String, let description = dict["description"] as? String else {
             throw CodeTemplaterError.generalError(message: "parameters name or description are missing")
         }
-        
+
         let defaultValue = dict["defaultValue"] as? Bool
         let mandatory = dict["mandatory"] as? Bool ?? true
         let alwaysAsk = dict["alwaysAsk"] as? Bool ?? true
-        
+
         super.init(
             name: name,
             type: .bool,
@@ -219,7 +222,7 @@ class BoolParameter: Parameter {
     }
 }
 
-class StringParameter: Parameter {
+final class StringParameter: Parameter {
     init(
         name: String,
         description: String,
@@ -238,16 +241,16 @@ class StringParameter: Parameter {
             alwaysAsk: alwaysAsk
         )
     }
-    
+
     init(_ dict: [String: Any]) throws {
         guard let name = dict["name"] as? String, let description = dict["description"] as? String else {
             throw CodeTemplaterError.generalError(message: "parameters name, description or defaultValue is missing")
         }
-        
+
         let defaultValue = dict["defaultValue"] as? String
         let mandatory = dict["mandatory"] as? Bool ?? true
         let alwaysAsk = dict["alwaysAsk"] as? Bool ?? true
-        
+
         super.init(
             name: name,
             type: .string,
@@ -259,7 +262,7 @@ class StringParameter: Parameter {
     }
 }
 
-class StringArrayParameter: Parameter {
+final class StringArrayParameter: Parameter {
     init(
         name: String,
         description: String,
@@ -276,16 +279,16 @@ class StringArrayParameter: Parameter {
             alwaysAsk: alwaysAsk
         )
     }
-    
+
     init(_ dict: [String: Any]) throws {
         guard let name = dict["name"] as? String, let description = dict["description"] as? String else {
             throw CodeTemplaterError.generalError(message: "parameters name, description or defaultValue is missing")
         }
-        
+
         let defaultValue = dict["defaultValue"] as? [String]
         let mandatory = dict["mandatory"] as? Bool ?? true
         let alwaysAsk = dict["alwaysAsk"] as? Bool ?? true
-        
+
         super.init(
             name: name,
             type: .stringArray,
@@ -296,3 +299,40 @@ class StringArrayParameter: Parameter {
         )
     }
 }
+
+
+let stringParametersIgnoredDuringPreparation = [
+    "mode",
+    "reviewMode",
+
+    // Template parameters
+    "template",
+    "templateScript",
+    "context",
+    "projectName",
+    "targetName",
+    "author",
+    "copyright",
+    "description",
+    "status",
+    "derivedFrom",
+
+    // Auto-generated parameters
+    "fileName",
+    "date",
+
+    // Paths
+    "scriptPath",
+    "locationPath",
+    "projectPath",
+    "testsPath",
+    "sourcesPath",
+    "templatePath",
+    "templateScriptPath",
+    "generatePath",
+    "validatePath",
+    "preparePath",
+
+    // Template preparation
+    "deriveFromTemplate"
+]

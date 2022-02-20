@@ -1,0 +1,10 @@
+{
+  "parameters": [
+    {
+      "name": "SuperClass",
+      "type": "string",
+      "defaultValue": "UIViewController",
+      "description": "A superclass of generated view controller"
+    }
+  ]
+}

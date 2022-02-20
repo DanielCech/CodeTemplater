@@ -42,7 +42,7 @@ func touch(file: String) {
 }
 
 /// Review of generated / prepared file
-class Reviewer {
+final class Reviewer {
 //     let shared = Reviewer()
 
     /// Review generated files - in one of two modes - overall or individual (each file separately)
@@ -61,13 +61,15 @@ class Reviewer {
         case .individual:
             for processedFile in processedFiles {
                 if try sameContents(processedFile) {
-                    print("🧷 " + processedFile.middleFile.lastPathComponent + ": same content, skipping\n")
-                    continue
+                    if let noSkipping = context[.noSkip], !noSkipping {
+                        Logger.log(indent: 0, string: "🧷 " + processedFile.middleFile.lastPathComponent + ": same content, skipping\n")
+                        continue
+                    }
                 }
 
                 compareThreeItems(first: processedFile.templateFile, second: processedFile.middleFile, third: processedFile.projectFile)
 
-                print("🧷 " + processedFile.middleFile.lastPathComponent + ":")
+                Logger.log(indent: 0, string: "🧷 " + processedFile.middleFile.lastPathComponent + ":")
 
                 // Check whether project folder exists
                 if let unwrappedProjectFile = processedFile.projectFile {
@@ -76,7 +78,7 @@ class Reviewer {
 
                 try checkDirectoryExistence(filePath: processedFile.templateFile, title: "Template")
 
-                print("    🟢 Press enter to continue...")
+                Logger.log(indent: 0, string: "    🟢 Press enter to continue...")
                 _ = readLine()
             }
         }
@@ -87,6 +89,10 @@ private extension Reviewer {
     func sameContents(_ files: ProcessedFile) throws -> Bool {
         guard let unwrappedProjectFile = files.projectFile else {
             return false
+        }
+
+        if unwrappedProjectFile == files.middleFile {
+            return false // The same file
         }
 
         do {
@@ -106,7 +112,7 @@ private extension Reviewer {
     func checkDirectoryExistence(filePath: String, title: String) throws {
         let projectDestinationPath = filePath.deletingLastPathComponent
         if !FileManager.default.directoryExists(atPath: projectDestinationPath) {
-            print("    🟢 \(title) subfolder does not exist. Create? [yN] ", terminator: "")
+            Logger.log(indent: 0, string: "    🟢 \(title) subfolder does not exist. Create? [yN] ", terminator: "")
             if readLine() == "y" {
                 try FileManager.default.createDirectory(atPath: projectDestinationPath, withIntermediateDirectories: true, attributes: nil)
             }

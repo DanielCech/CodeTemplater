@@ -9,7 +9,7 @@
 # Rule identifiers to exclude from running.
 #
 disabled_rules:
-
+    - opening_brace
 #
 # Some rules are only opt-in. Find all the available rules by running: swiftlint rules
 #
@@ -26,7 +26,6 @@ opt_in_rules:
   - fatal_error_message
   - first_where
   - toggle_bool
-  - unused_private_declaration
   - modifier_order
   - contains_over_first_not_nil
   - convenience_type
@@ -44,6 +43,8 @@ opt_in_rules:
 #
 included:
 
+statement_position:
+  statement_mode: uncuddled_else
 
 #
 # Paths to ignore during linting. Takes precedence over `included`.
@@ -56,13 +57,8 @@ excluded:
   - vendor
   - fastlane
   - R.generated.swift
-  - .build
-  - Templater/Validate
-  - SampleApp/templater/Validate
-
-statement_position:
-  statement_mode: uncuddled_else
-  
+  - templater
+  - Minted/Common/Views/HTML
 #
 # Configure individual rules below.
 #
@@ -74,6 +70,10 @@ force_cast: error
 identifier_name:
   excluded:
     - id
+    
+type_name:
+    excluded:
+    - T
 
 empty_count: warning
 
@@ -99,6 +99,9 @@ file_length:
   error: 1000
   warning: 700
 
+function_parameter_count:
+  error: 8
+  warning: 7
 
 # Custom rules definitions
 custom_rules:

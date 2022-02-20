@@ -52,9 +52,9 @@ extension CodeTemplaterError: PrintableError {
             errorDescription = "data not valid: \(message)"
         case let .dataInconsistency(message: message):
             errorDescription = "data inconsistency: \(message)"
-            
+
         case .missingCodeTemplaterJson:
-            errorDescription = "missing CodeTemplater.json in current folder."
+            errorDescription = "missing CodeTemplater.json in templater folder. Use `codetemplater init`."
         case .missingTemplaterFolder:
             errorDescription = "missing folder 'templater'."
         case let .stencilTemplateError(message):

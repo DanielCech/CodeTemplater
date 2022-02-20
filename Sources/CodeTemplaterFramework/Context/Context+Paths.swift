@@ -5,8 +5,8 @@
 //  Created by Daniel Cech on 13/09/2020.
 //
 
-import Foundation
 import Files
+import Foundation
 
 // MARK: - Paths
 
@@ -14,17 +14,17 @@ extension Context {
     /// Setup paths for project
     func setupProjectPaths() throws {
         if optionalStringValue(.projectPath) == nil {
-            self[.projectPath] = try Folder.current.subfolder(named: "templater").subfolder(named: "Generate").path
+            self[.projectPath] = try Folder.current.subfolder(named: "templater").subfolder(named: "Generate").path         // TODO: check, is it ok?
         }
-
-        if optionalStringValue(.locationPath) == nil {
-            self[.locationPath] = try Folder.current.subfolder(named: "templater").subfolder(named: "Generate").path
-        }
-
+        
         guard let unwrappedProjectPath = optionalStringValue(.projectPath) else {
             throw CodeTemplaterError.moreInfoNeeded(message: "projectPath is missing")
         }
-
+        
+        guard FileManager.default.directoryExists(atPath: stringValue(.projectPath)) else {
+            throw CodeTemplaterError.folderNotFound(message: "projectPath folder \(stringValue(.projectPath)) does not exist")
+        }
+        
         if optionalStringValue(.sourcesPath) == nil {
             // Derive sources path from project path and project name
             if let unwrappedProjectName = optionalStringValue(.projectName) {
@@ -33,6 +33,21 @@ extension Context {
             else {
                 throw CodeTemplaterError.moreInfoNeeded(message: "unknown sourcesPath")
             }
+        }
+        
+        if !FileManager.default.directoryExists(atPath: stringValue(.sourcesPath)) {
+            throw CodeTemplaterError.folderNotFound(message: "sourcesPath folder \(stringValue(.sourcesPath)) does not exist. Parameter `sourcesPath` describes the path where project sources are located. It is one level deeper than projectPath. Is often generated from `projectPath` by appending `projectName`")
+        }
+
+        if optionalStringValue(.testsPath) == nil {
+            // Derive sources path from project path and project name
+            if let unwrappedProjectName = optionalStringValue(.projectName) {
+                self[.testsPath] = unwrappedProjectPath.appendingPathComponent(path: unwrappedProjectName + " Tests")
+            }
+        }
+        
+        if !FileManager.default.directoryExists(atPath: stringValue(.testsPath)) {
+            Logger.log(indent: 0, string: "⚠️ Folder testsPath does not exist.")
         }
 
         if let unwrappedLocationPath = optionalStringValue(.locationPath) {
@@ -44,9 +59,15 @@ extension Context {
                 self[.locationPath] = unwrappedProjectPath.appendingPathComponent(path: unwrappedLocationPath)
             }
         }
-        else {
-            // TODO: check - location path is not sometimes needed
-            throw CodeTemplaterError.moreInfoNeeded(message: "locationPath is missing")
+        
+        if let unwrappedLocationPath = optionalStringValue(.locationPath), !FileManager.default.directoryExists(atPath: unwrappedLocationPath) {
+            Logger.log(indent: 0, string: "🟢 locationPath \(unwrappedLocationPath) does not exist. Create? [yN] ", terminator: "")
+            if readLine() == "y" {
+                try FileManager.default.createDirectory(atPath: unwrappedLocationPath, withIntermediateDirectories: true, attributes: nil)
+            }
+            else {
+                throw CodeTemplaterError.folderNotFound(message: "locationPath folder \(unwrappedLocationPath) does not exist")
+            }
         }
     }
 
@@ -59,10 +80,25 @@ extension Context {
         }
 
         if let unwrappedScriptPath = optionalStringValue(.scriptPath) {
-            self[.templatePath] = unwrappedScriptPath.appendingPathComponent(path: "Templates")
-            self[.generatePath] = unwrappedScriptPath.appendingPathComponent(path: "Generate")
-            self[.validatePath] = unwrappedScriptPath.appendingPathComponent(path: "Validate")
-            self[.preparePath] = unwrappedScriptPath.appendingPathComponent(path: "Prepare")
+            if self[.templatePath] == nil {
+                self[.templatePath] = unwrappedScriptPath.appendingPathComponent(path: "Templates")
+            }
+            
+            if self[.templateScriptPath] == nil {
+                self[.templateScriptPath] = unwrappedScriptPath.appendingPathComponent(path: "TemplateScripts")
+            }
+            
+            if self[.generatePath] == nil {
+                self[.generatePath] = unwrappedScriptPath.appendingPathComponent(path: "Generate")
+            }
+            
+            if self[.validatePath] == nil {
+                self[.validatePath] = unwrappedScriptPath.appendingPathComponent(path: "Validate")
+            }
+            
+            if self[.preparePath] == nil {
+                self[.preparePath] = unwrappedScriptPath.appendingPathComponent(path: "Prepare")
+            }
         }
         else {
             throw CodeTemplaterError.moreInfoNeeded(message: "scriptPath is missing")

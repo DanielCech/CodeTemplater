@@ -11,7 +11,7 @@ import PathKit
 import ScriptToolkit
 import Stencil
 
-class Generator {
+final class Generator {
     /// Dependencies
     private var reviewer: Reviewer
     private var templates: Templates
@@ -26,6 +26,19 @@ class Generator {
     /// Generate code using template with context in json file
     func generateCode(context: Context) throws {
         let template = context.stringValue(.template)
+        
+        let templateInfo = try templates.templateInfo(for: template, context: context)
+        Logger.log(indent: 0, string: "\n🟢 Template description: \(templateInfo.description)")
+        
+        if templateInfo.status != "passing" {
+            Logger.log(indent: 0, string: "\n⚠️ Template status: \(templateInfo.status)")
+        }
+        
+        Logger.log(indent: 0, string: "")
+        
+        if context.optionalStringValue(.locationPath) != nil {
+            context[.inPlace] = true
+        }
 
         try generate(
             context: context,
@@ -33,19 +46,25 @@ class Generator {
             deleteGenerate: true
         )
     }
-    
+
     /// Generate code using particular template
     func generate(
         context: Context,
         template: Template,
         deleteGenerate: Bool = true
     ) throws {
-        try generateTemplate(template: template, context: context, deleteGenerate: deleteGenerate)
+        try generateTemplate(
+            template: template,
+            context: context,
+            deleteGenerate: deleteGenerate
+        )
 
         // Apply swift format on generated code
-        shell("/usr/local/bin/swiftformat \"\(context.stringValue(.scriptPath))\" > /dev/null 2>&1")
+        shell("/usr/local/bin/swiftformat \"\(context.stringValue(.generatePath))\" > /dev/null 2>&1")
 
         try reviewer.review(processedFiles: processedFiles, context: context)
+        
+        Logger.log(indent: 0, string: "🟢 Generated code location: \(context.stringValue(.generatePath))")
     }
 }
 
@@ -56,10 +75,8 @@ private extension Generator {
         context: Context,
         deleteGenerate: Bool = true
     ) throws {
-        
-        let (templateCategory, templateName) = templates.templateParts(for: template)
         let templateInfo = try templates.templateInfo(for: template, context: context)
-        let templateFolder = try Folder(path: context.stringValue(.templatePath)).subfolder(at: templateCategory).subfolder(at: templateName)
+        let templateFolder = try Folder(path: context.stringValue(.templatePath)).subfolder(at: template)
 
         // Delete contents of Generate folder
         let generatedFolder = try Folder(path: context.stringValue(.generatePath))
@@ -68,7 +85,7 @@ private extension Generator {
         }
 
         let projectFolder = try Folder(path: context.stringValue(.projectPath))
-
+        
         try traverse(
             paths: ProcessedPaths(
                 templatePath: templateFolder.path,
@@ -78,9 +95,12 @@ private extension Generator {
             templateInfo: templateInfo,
             context: context
         )
-        
+
         // Generate also template dependencies
-        try generateTemplateDependencies(templateInfo: templateInfo, context: context)
+        try generateTemplateDependencies(
+            templateInfo: templateInfo,
+            context: context
+        )
     }
 
     /// Generation of template dependencies
@@ -92,24 +112,27 @@ private extension Generator {
         for dependency in templateInfo.dependencies {
             var dependencyName = dependency
 
-            // Conditional dependency syntax: "template:condition1,condition2,..."; true if any of conditions is true
-            if dependency.contains(":") {
-                let parts = dependency.split(separator: ":")
-                if let firstPart = parts.first, let lastPart = parts.last {
+            // Conditional dependency syntax: "template <=> condition1 && (condition2 || condition3)"; the logical expression
+            if dependency.contains(" <=> ") {
+                let parts = dependency.components(separatedBy: " <=> ")
+                if let firstPart = parts.first, let lastPart = parts.last, parts.count == 2 {
                     dependencyName = String(firstPart)
-                    let conditions = String(lastPart).split(separator: ",")
-                    var overallValue = false
-                    for condition in conditions {
-                        if let conditionValue = context.dictionary[String(condition)] as? Bool, conditionValue {
-                            overallValue = true
-                            break
-                        }
+                    var condition = String(lastPart)
+                    
+                    // Bool values substitutions
+                    for parameterName in context.boolParameterNames() {
+                        condition = condition.replacingOccurrences(of: parameterName, with: String(context.boolValue(parameterName)))
                     }
-
-                    // Dependency has not fullfilled conditions
-                    if !overallValue {
+                    
+                    let expression = NSExpression(format: condition)
+                    if let result = expression.expressionValue(with: nil, context: nil) as? Bool, !result {
                         continue
                     }
+                    else {
+                        continue
+                    }
+                    
+                    // Generate template only if expression is true
                 }
             }
 
@@ -167,7 +190,8 @@ private extension Generator {
     ) throws {
         if file.name.lowercased() == "template.json"
             || file.name.lowercased().starts(with: "screenshot")
-            || file.name.lowercased().starts(with: "description") {
+            || file.name.lowercased().starts(with: "description")
+        {
             return
         }
 
@@ -232,12 +256,32 @@ private extension Generator {
         templateInfo: TemplateInfo,
         context: Context
     ) throws {
-        var baseGeneratePath: String
-        var baseProjectPath: String
 
         let templateFolder = try Folder(path: paths.templatePath)
         let generatedFolder = try Folder(path: paths.middlePath)
+
+        // traverse without path substitutions
+        if !context.inPlace {
+            let outputFolder = try templateFolder.name.generateName(context: context)
+            let generatedSubFolder = try generatedFolder.createSubfolder(at: outputFolder)
+
+            try traverse(
+                paths: ProcessedPaths(
+                    templatePath: paths.templatePath,
+                    middlePath: generatedSubFolder.path,
+                    projectPath: paths.projectPath.appendingPathComponent(path: outputFolder)
+                ),
+                templateInfo: templateInfo,
+                context: context
+            )
+            
+            return
+        }
         
+        var baseMiddlePath: String
+        var baseProjectPath: String
+        
+        // Traverse thru special folders
         switch LocationType(rawValue: templateFolder.name) {
         case .project:
             try traverse(
@@ -251,14 +295,27 @@ private extension Generator {
             )
 
         case .sources:
-            baseGeneratePath = try generatedFolder.createSubfolder(at: context.stringValue(.sourcesPath).lastPathComponent).path
+            baseMiddlePath = try generatedFolder.createSubfolder(at: context.stringValue(.sourcesPath).lastPathComponent).path
             baseProjectPath = context.stringValue(.sourcesPath)
 
             try traverse(
                 paths: ProcessedPaths(
                     templatePath: paths.templatePath,
-                    middlePath: baseGeneratePath,
+                    middlePath: baseMiddlePath,
                     projectPath: baseProjectPath
+                ),
+                templateInfo: templateInfo,
+                context: context
+            )
+
+        case .tests:
+            baseMiddlePath = try generatedFolder.createSubfolder(at: context.stringValue(.testsPath).lastPathComponent).path
+            
+            try traverse(
+                paths: ProcessedPaths(
+                    templatePath: paths.templatePath,
+                    middlePath: baseMiddlePath,
+                    projectPath: context.stringValue(.testsPath)
                 ),
                 templateInfo: templateInfo,
                 context: context
@@ -267,19 +324,18 @@ private extension Generator {
         case .location:
             let locationPath = context.stringValue(.locationPath)
             let projectPath = context.stringValue(.projectPath)
-            
+
             guard locationPath.hasPrefix(projectPath) else {
                 throw CodeTemplaterError.dataInconsistency(message: "locationPath should have project path as its prefix.")
             }
-            
-            
+
             let subPath = String(locationPath.suffix(locationPath.count - projectPath.count))
 
             if subPath.isEmpty {
-                baseGeneratePath = paths.middlePath
+                baseMiddlePath = paths.middlePath
             }
             else {
-                baseGeneratePath = try generatedFolder.createSubfolder(at: subPath).path
+                baseMiddlePath = try generatedFolder.createSubfolder(at: subPath).path
             }
 
             baseProjectPath = context.stringValue(.locationPath)
@@ -287,7 +343,7 @@ private extension Generator {
             try traverse(
                 paths: ProcessedPaths(
                     templatePath: paths.templatePath,
-                    middlePath: baseGeneratePath,
+                    middlePath: baseMiddlePath,
                     projectPath: baseProjectPath
                 ),
                 templateInfo: templateInfo,

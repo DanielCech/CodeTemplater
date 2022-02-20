@@ -11,27 +11,43 @@ import Moderator
 import ScriptToolkit
 
 /// The object for accessing and loading  the context
-class ParameterProcessor {
-    
+final class ParameterProcessor {
     // Dependencies
     var templates: Templates
-    
+    var installer: Installer
+
     var parameters = [Parameter]()
     let defaultParameterNames = DefaultBoolParameter.allCases.map { $0.rawValue } + DefaultStringParameter.allCases.map { $0.rawValue } + DefaultStringArrayParameter.allCases.map { $0.rawValue }
-    
+
     // Shell parameters
     private var boolParameters = [String: FutureValue<Bool>]()
     private var stringParameters = [String: FutureValue<String?>]()
-    private var stringArrayParameters = [String: FutureValue<[String]>]()
-    
+    private var stringArrayParameters = [String: FutureValue<String?>]()
+
     // swiftlint:disable implicitly_unwrapped_optional
     private var help: FutureValue<Bool>!
+    private var install: FutureValue<Bool>!
     private var moderator: Moderator!
     // swiftlint:enable implicitly_unwrapped_optional
-    
+
     private var possibleTemplates = [ParameterValue]()
-    
+
     lazy var defaultParametersArray: [Parameter] = [
+        // Generate/Prepare mode
+        BoolParameter(
+            name: "inPlace",
+            description: "Generate: the template into the project to proper location. Prepare: use real location of files in project for template preparation.",
+            defaultValue: false,
+            mandatory: false,
+            alwaysAsk: false
+        ),
+        BoolParameter(
+            name: "noSkip",
+            description: "Disable skipping of comparison using the merge tool if content is the same.",
+            defaultValue: true,
+            mandatory: false
+        ),
+        
         // Script setup
         StringParameter(
             name: "mode",
@@ -55,14 +71,9 @@ class ParameterProcessor {
             possibleValues: possibleTemplates
         ),
         StringParameter(
-            name: "templateCombo",
-            description: "Template combo name",
+            name: "templateScript",
+            description: "The name of template script to run",
             mandatory: false
-        ),
-        StringParameter(
-            name: "category",
-            description: "Template category name",
-            mandatory: false // It is mandatory only for prepare mode
         ),
         StringParameter(
             name: "context",
@@ -90,11 +101,28 @@ class ParameterProcessor {
             name: "copyright",
             description: "Copyright phrase used in file header"
         ),
+        StringParameter(
+            name: "description",
+            description: "The short description of template and its usage",
+            mandatory: false
+        ),
+        StringParameter(
+            name: "status",
+            description: "The current status of template in terms of validation. The possible values are: draft (template has not been validated), passing (template passed the validation), failing (templated didn't pass the validation)",
+            possibleValues: [.string("draft"), .string("passing"), .string("failing")],
+            mandatory: false
+        ),
+        StringParameter(
+            name: "derivedFrom",
+            description: "The templated which current templated is derived from",
+            defaultValue: "<none>",
+            mandatory: false
+        ),
 
         // Auto-generated parameters
         StringParameter(
             name: "fileName",
-            description: "The name of currently professed file - automatically generated",
+            description: "The name of currently processed file - automatically generated",
             mandatory: false
         ),
         StringParameter(
@@ -143,6 +171,8 @@ class ParameterProcessor {
         StringParameter(
             name: "deriveFromTemplate",
             description: "The name of template as origin for template preparation",
+            defaultValue: "<none>",
+            possibleValues: [.string("<none>")] + possibleTemplates,
             mandatory: false
         ),
         StringArrayParameter(
@@ -152,31 +182,31 @@ class ParameterProcessor {
         )
     ]
 
-    
-    init(templates: Templates) {
+    init(templates: Templates, installer: Installer) {
         self.templates = templates
+        self.installer = installer
     }
-    
+
     func getPossibleTemplates(context: Context) throws {
         let templateDict = try templates.templateTypes(context: context)
         possibleTemplates = templateDict.keys.map { .string($0) }
     }
-    
+
     /// Setup of command line parameters parsing
     func setupShellParameters() {
         moderator = Moderator(description: "Generates a swift app components from templates")
         moderator.usageFormText = "codeTemplate <params>"
-        
+
         for parameter in parameters {
             switch parameter.type {
-                
             case .bool:
                 boolParameters[parameter.name] = moderator.add(.option(parameter.name, description: parameter.description))
             case .string:
                 stringParameters[parameter.name] = moderator.add(Argument<String?>
-                .optionWithValue(parameter.name, name: parameter.name, description: parameter.description))
+                    .optionWithValue(parameter.name, name: parameter.name, description: parameter.description))
             case .stringArray:
-                stringArrayParameters[parameter.name] = moderator.add(Argument<String?>.singleArgument(name: parameter.name, description: parameter.description).repeat())
+                stringArrayParameters[parameter.name] = moderator.add(Argument<String?>
+                    .optionWithValue(parameter.name, name: parameter.name, description: parameter.description))
             }
         }
 
@@ -191,7 +221,6 @@ class ParameterProcessor {
         else {
             try? moderator.parse()
         }
-        
 
         if let contextFileValue = stringParameters["context"], let contextFile = contextFileValue.value {
             try context.applyContext(fromFile: contextFile)
@@ -202,7 +231,7 @@ class ParameterProcessor {
             if let commandLineValue = boolParameters[parameterName]?.value {
                 context.dictionary[parameterName] = commandLineValue
             }
-            
+
             // applyDefaultParameterValueIfNeeded(parameterName: parameterName, type: .bool, context: context)
         }
 
@@ -210,19 +239,30 @@ class ParameterProcessor {
             if let commandLineValue = stringParameters[parameterName]?.value {
                 context.dictionary[parameterName] = commandLineValue
             }
-            
+
             // applyDefaultParameterValueIfNeeded(parameterName: parameterName, type: .string, context: context)
         }
 
         for parameterName in stringArrayParameters.keys {
-            if let commandLineValue = stringArrayParameters[parameterName]?.value, !commandLineValue.isEmpty {
-                context.dictionary[parameterName] = commandLineValue
+            if let commandLineValue = stringArrayParameters[parameterName]?.value {
+                let separatedValues = commandLineValue.splittedBySpaces()
+                context.dictionary[parameterName] = separatedValues
             }
             
+//            if let commandLineValue = stringArrayParameters[parameterName]?.value, !commandLineValue.isEmpty {
+//                // Weird behavior of command line parser workaround
+//                if commandLineValue == ["true"] {
+//                    context.dictionary[parameterName] = nil
+//                }
+//                else {
+//                    context.dictionary[parameterName] = commandLineValue
+//                }
+//            }
+
             // applyDefaultParameterValueIfNeeded(parameterName: parameterName, type: .stringArray, context: context)
         }
     }
-    
+
     /// Use default parameter value if needed
     func applyDefaultParameterValueIfNeeded(parameterName: String, type: ParameterType, context: Context) {
         // If value is missing, use default value if defined
@@ -243,19 +283,19 @@ class ParameterProcessor {
     }
 
     /// Help hint
-    func showUsageInfoIfNeeded() {
+    func processSpecialParameters() throws {
         if help.value {
-            print(moderator.usagetext)
+            Logger.log(indent: 0, string: moderator.usagetext)
             exit(0)
         }
     }
-    
+
     /// Use default parameters only
     func resetWithDefaultParameters() {
         parameters = defaultParametersArray
         log.debug(debugDescription())
     }
-    
+
     /// Update the parameter list
     func appendParameterDefinitions(_ definitions: [Parameter]) throws {
         for definition in definitions {
@@ -265,76 +305,103 @@ class ParameterProcessor {
                 }
                 parameters.removeAll(where: { $0.name == definition.name })
             }
-            
+
             if defaultParameterNames.contains(definition.name) {
                 // TODO: check !!!
             }
-            
+
             parameters.append(definition)
         }
     }
-    
+
     /// Parameter definitions included in template.json
     func loadTemplateParameters(templateName: String, context: Context) throws {
         let dependencyList = try templates.templateWithDependencies(templateName: templateName, context: context)
         var newParameters = [Parameter]()
-        
+
         for dependency in dependencyList {
             let dependencyTemplate = try templates.templateInfo(for: dependency, context: context)
-            
+
             newParameters.append(contentsOf: dependencyTemplate.parameters)
         }
-        
+
         try appendParameterDefinitions(newParameters)
-        
+
         log.debug(debugDescription())
     }
-    
+
+    /// Parameter definitions included in template.json
+    func loadTemplateScriptParameters(templateScriptName: String, context: Context) throws {
+        let dependencyList = try templates.templateWithDependencies(templateName: templateScriptName, context: context)
+        var newParameters = [Parameter]()
+
+        for dependency in dependencyList {
+            let dependencyTemplate = try templates.templateInfo(for: dependency, context: context)
+
+            newParameters.append(contentsOf: dependencyTemplate.parameters)
+        }
+
+        try appendParameterDefinitions(newParameters)
+
+        log.debug(debugDescription())
+    }
+
     /// Asking for particular parameter
     func getParameter(name: String) -> Parameter? {
         parameters.first(where: { $0.name == name })
     }
-    
+
     /// Some modifications of setup before asking for new params
     func setupParametersBeforeAsking(context: Context) {
         // If location path is defined, make projectPath mandatory and set review mode to "individual"
-        if context[.locationPath] != nil {
+        if context.inPlace {
             for index in 0 ... parameters.count - 1 {
                 if parameters[index].name == "projectPath" {
                     parameters[index].mandatory = true
                     break
                 }
             }
-            
+
             context[.reviewMode] = "individual"
         }
     }
-    
+
     /// Asking for missing parameters
     func askForMissingParameters(context: Context) {
         var missingParameterNames = [String]()
-        
+
         for parameter in parameters {
-            if (context.dictionary[parameter.name] == nil) && parameter.mandatory {
+            if context.dictionary[parameter.name] == nil, parameter.mandatory {
                 missingParameterNames.append(parameter.name)
             }
         }
-        
+
         log.debug("missingParameterNames: \(missingParameterNames)")
-        
+
         for parameterName in missingParameterNames {
             if let parameter = getParameter(name: parameterName) {
                 switch parameter.type {
                 case .bool:
                     _ = context.boolValue(parameterName)
                 case .string:
-                    _ = context.stringValue(parameterName)
+                    // Asking for template in prepare mode is specific - the template does not exist
+                    if (context.stringValue(.mode) == ProgramMode.prepare.rawValue) && (parameter.name == "template") {
+                        Logger.log(indent: 0, string: "🧩 Missing parameter '\(parameterName)': \(parameter.description).")
+                        Logger.log(indent: 0, string: "❔ Enter '\(parameterName)': ", terminator: "")
+                        if let input = readLine() {
+                            Logger.log(indent: 0, string: "")
+                            context[.template] = input
+                        }
+                    }
+                    else {
+                        _ = context.stringValue(parameterName)
+                    }
+                
                 case .stringArray:
                     _ = context.stringArrayValue(parameterName)
                 }
             }
         }
-        
     }
 }
 
@@ -342,7 +409,7 @@ class ParameterProcessor {
 
 extension ParameterProcessor {
     func debugDescription() -> String {
-        let parametersDescription = dumpString(self.parameters)
+        let parametersDescription = dumpString(parameters)
         return "parameters: \(parametersDescription)"
     }
 }

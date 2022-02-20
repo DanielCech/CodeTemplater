@@ -1,0 +1,22 @@
+{
+  "sourcesPath" : "/Users/danielcech/Documents/[Development]/[Projects]/ios-code-templates/SampleApp/SampleApp",
+  "mode" : "generate",
+  "copyright" : "Copyright � 2020 STRV. All rights reserved.",
+  "preparePath" : "/Users/danielcech/Documents/[Development]/[Projects]/ios-code-templates/SampleApp/templater/Prepare",
+  "projectPath" : "/Users/danielcech/Documents/[Development]/[Projects]/ios-code-templates/SampleApp",
+  "templatePath" : "/Users/danielcech/Documents/[Development]/[Projects]/ios-code-templates/SampleApp/templater/Templates",
+  "template" : "ViewController-RxSwift",
+  "reviewMode" : "overall",
+  "superClass" : "UIViewController",
+  "locationPath" : "/Users/danielcech/Documents/[Development]/[Projects]/ios-code-templates/SampleApp/SampleApp",
+  "coordinator" : "Harbor",
+  "date" : "21/09/2020",
+  "context" : "/Users/danielcech/Documents/lastContext.json",
+  "author" : "Daniel Cech",
+  "targetName" : "SampleApp",
+  "scriptPath" : "/Users/danielcech/Documents/[Development]/[Projects]/ios-code-templates/SampleApp/templater/",
+  "projectName" : "SampleApp",
+  "generatePath" : "/Users/danielcech/Documents/[Development]/[Projects]/ios-code-templates/SampleApp/templater/Generate",
+  "name" : "Something",
+  "validatePath" : "/Users/danielcech/Documents/[Development]/[Projects]/ios-code-templates/SampleApp/templater/Validate"
+}

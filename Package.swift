@@ -4,12 +4,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "codeTemplater",
+    name: "codetemplater",
     platforms: [
         .macOS(.v10_15)
     ],
     products: [
-        .executable(name: "codeTemplater", targets: ["codeTemplater"]),
+        .executable(name: "codetemplater", targets: ["codetemplater"]),
         .library(name: "CodeTemplaterFramework", targets: ["CodeTemplaterFramework"])
     ],
     dependencies: [
@@ -20,22 +20,23 @@ let package = Package(
         .package(url: "https://github.com/kareman/FileSmith.git", from: "0.3.0"),
         .package(url: "https://github.com/stencilproject/Stencil.git", from: "0.13.0"),
         .package(url: "https://github.com/SwiftGen/StencilSwiftKit.git", from: "2.7.2"),
-        .package(url: "https://github.com/DaveWoodCom/XCGLogger.git", from: "7.0.0")
+        .package(url: "https://github.com/DaveWoodCom/XCGLogger.git", from: "7.0.0"),
+        .package(url: "https://github.com/jpsim/Yams.git", from: "4.0.6")
     ],
     targets: [
         // Targets are the basic building blocks of a package. A target can define a module or a test suite.
         // Targets can depend on other targets in this package, and on products in packages which this package depends on.
         .target(
-            name: "codeTemplater",
-            dependencies: ["Files", "Moderator", "ScriptToolkit", "SwiftShell", "FileSmith", "Stencil", "StencilSwiftKit", "XCGLogger", "CodeTemplaterFramework"]
+            name: "codetemplater",
+            dependencies: ["Files", "Moderator", "ScriptToolkit", "SwiftShell", "FileSmith", "Stencil", "StencilSwiftKit", "XCGLogger", "CodeTemplaterFramework",    "Yams"]
         ),
         .target(
             name: "CodeTemplaterFramework",
-            dependencies: ["Files", "Moderator", "ScriptToolkit", "SwiftShell", "FileSmith", "Stencil", "StencilSwiftKit", "XCGLogger"]
+            dependencies: ["Files", "Moderator", "ScriptToolkit", "SwiftShell", "FileSmith", "Stencil", "StencilSwiftKit", "XCGLogger", "Yams"]
         ),
         .testTarget(
             name: "codeTemplaterTests",
-            dependencies: ["codeTemplater"]
+            dependencies: ["codetemplater"]
         )
     ]
 )
